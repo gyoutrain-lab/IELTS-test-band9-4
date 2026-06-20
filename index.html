@@ -22,9 +22,10 @@
     </div>
 
     <script>
+        // FIXED: Added "type" key to all modules
         const exam = [
-            { id: "writing", title: "Writing: Clinical Reporting", prompt: "Baseline: 'The patient's BP is going up fast.'", target: ["escalation", "systolic", "pressure", "observation"], minWords: 10 },
-            { id: "reading", title: "Reading: NPSG Compliance", prompt: "Which is the primary goal of environmental hazard mitigation?", options: ["Cost reduction", "Adverse event prevention", "Staff convenience"], correct: "Adverse event prevention" }
+            { id: "writing", title: "Writing: Clinical Reporting", type: "text", prompt: "Baseline: 'The patient's BP is going up fast.'", target: ["escalation", "systolic", "pressure", "observation"], minWords: 10 },
+            { id: "reading", title: "Reading: NPSG Compliance", type: "radio", prompt: "Which is the primary goal of environmental hazard mitigation?", options: ["Cost reduction", "Adverse event prevention", "Staff convenience"], correct: "Adverse event prevention" }
         ];
 
         let cur = 0, scores = {}, name = "", regId = "";
@@ -32,11 +33,8 @@
         function calculateAdvancedScore(input, stage) {
             let score = 0;
             const lowerInput = input.toLowerCase();
-            // Nominalization Check (Requirement for Band 9)
             if (/tion|ment|ance|ence/i.test(lowerInput)) score += 4.0;
-            // Thematic Fronting Check
             if (/^(clinical|regarding|subsequent|initial|immediate)/i.test(lowerInput)) score += 3.0;
-            // Keyword Density
             const hits = stage.target.filter(w => lowerInput.includes(w)).length;
             score += (hits / stage.target.length) * 2.0;
             return Math.min(9.0, score);
@@ -52,9 +50,14 @@
         function render() {
             let stage = exam[cur];
             document.getElementById('header').innerText = stage.title;
+            // Logic to handle different types
+            let inputField = stage.type === 'radio' 
+                ? stage.options.map(o => `<div class="form-check"><input class="form-check-input" type="radio" name="opt" value="${o}"> ${o}</div>`).join('') 
+                : '<textarea id="ans" class="form-control mb-3" rows="4"></textarea>';
+
             document.getElementById('content').innerHTML = `
                 <p class="lead">${stage.prompt}</p>
-                ${stage.type === 'radio' ? stage.options.map(o => `<div class="form-check"><input class="form-check-input" type="radio" name="opt" value="${o}"> ${o}</div>`).join('') : '<textarea id="ans" class="form-control mb-3" rows="4"></textarea>'}
+                ${inputField}
                 <button onclick="next()" class="btn btn-primary w-100">Submit Competency</button>
             `;
         }
@@ -63,10 +66,12 @@
             let stage = exam[cur];
             let score = 0;
             if(stage.type === 'radio') {
-                score = (document.querySelector('input[name="opt"]:checked')?.value === stage.correct) ? 9 : 0;
+                let selected = document.querySelector('input[name="opt"]:checked');
+                if(!selected) return alert("Please select an option.");
+                score = (selected.value === stage.correct) ? 9 : 0;
             } else {
                 let input = document.getElementById('ans').value;
-                if(input.split(' ').length < stage.minWords) return alert("Response too brief (Professional reporting required).");
+                if(input.split(' ').length < stage.minWords) return alert("Response too brief.");
                 score = calculateAdvancedScore(input, stage);
             }
             scores[stage.id] = score;
