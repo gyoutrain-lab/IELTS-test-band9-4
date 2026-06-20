@@ -2,110 +2,108 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Professional Proficiency Certification Suite</title>
+    <title>Nursing Proficiency Certification Suite</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .cert-box { border: 12px double #000; padding: 50px; background: #fff; }
-        .score-display { font-size: 3rem; font-weight: bold; color: #0d6efd; }
+        .cert-box { border: 12px double #000; padding: 40px; background: #fff; }
+        .score-display { font-size: 2.5rem; font-weight: bold; color: #0d6efd; }
     </style>
 </head>
 <body class="bg-light p-4">
 
-    <div id="main-app" class="container bg-white p-5 shadow rounded" style="max-width: 900px;">
+    <div id="app" class="container bg-white p-5 shadow rounded" style="max-width: 900px;">
         <h2 id="header">Candidate Authentication</h2>
         <div id="content">
             <input type="text" id="name" class="form-control mb-3" placeholder="Full Legal Name">
-            <input type="text" id="id" class="form-control mb-3" placeholder="Registration ID">
-            <button onclick="begin()" class="btn btn-dark w-100">Initialize Formal Assessment</button>
+            <input type="text" id="regId" class="form-control mb-3" placeholder="Registration ID">
+            <button onclick="startExam()" class="btn btn-dark w-100">Begin Official Assessment</button>
         </div>
     </div>
 
     <script>
-        const exam = [
-            { id: "writing", title: "Writing: Clinical Reporting", type: "text", 
-              prompt: "Baseline: 'The patient's BP is going up fast.'", 
-              target: ["escalation", "systolic", "pressure", "observation", "intervention"], minWords: 10 },
-            { id: "reading", title: "Reading: NPSG Compliance", type: "radio", 
-              prompt: "Which is the primary goal of environmental hazard mitigation?", 
-              options: ["Cost reduction", "Adverse event prevention", "Staff convenience"], correct: "Adverse event prevention" }
+        // COMPREHENSIVE TEST BATTERY (Representing all 4 domains)
+        const testBank = [
+            { id: "w1", title: "Writing: Clinical Reporting", type: "text", prompt: "Summarize: 'The patient's BP is going up fast.'", target: ["escalation", "systolic", "pressure"], minWords: 10 },
+            { id: "r1", title: "Reading: Safety Protocol", type: "radio", prompt: "What is the NPSG standard for patient identification?", options: ["Name only", "Two patient identifiers", "Bed number"], correct: "Two patient identifiers" },
+            { id: "l1", title: "Listening: Handover Logic", type: "radio", prompt: "Identify the SBAR component: 'The patient is currently on 2L O2.'", options: ["Situation", "Assessment", "Background"], correct: "Background" },
+            { id: "s1", title: "Speaking: Patient Consultation", type: "text", prompt: "Convert to professional register: 'I'll check on you later.'", target: ["subsequent", "assessment", "monitoring"], minWords: 10 }
         ];
 
-        let cur = 0, scores = {}, name = "", regId = "";
+        let cur = 0, scores = {w1:0, r1:0, l1:0, s1:0}, name = "", regId = "";
 
-        // PROFESSIONAL SCORING ENGINE
         function calculateAdvancedScore(input, stage) {
-            let score = 0;
+            let score = 2.0; 
             const lowerInput = input.toLowerCase();
-            const words = input.split(/\s+/).filter(w => w.length > 0);
-            
-            // 1. Vocabulary Density (Check for clinical target terms)
+            if (/tion|ment|ance|ence|ity/i.test(lowerInput)) score += 3.5;
+            if (/^(clinical|regarding|subsequent|initial|immediate)/i.test(lowerInput)) score += 2.0;
             const hits = stage.target.filter(w => lowerInput.includes(w)).length;
-            score += (hits * 1.5); 
-
-            // 2. Nominalization (Band 9 marker: -tion, -ment, -ance, -ity)
-            if (/tion|ment|ance|ence|ity/i.test(lowerInput)) score += 2.5;
-
-            // 3. Syntactic Complexity (Complex phrasing)
-            if (lowerInput.includes("due to") || lowerInput.includes("resulting in") || lowerInput.includes("in order to")) score += 2.0;
-
-            // 4. Structure/Length (Professional standard)
-            if (words.length >= 10 && words.length <= 30) score += 2.0;
-
+            score += (hits * 1.5);
             return Math.min(9.0, parseFloat(score.toFixed(1)));
         }
 
-        function begin() {
+        function startExam() {
             name = document.getElementById('name').value;
-            regId = document.getElementById('id').value;
-            if(!name || !regId) return alert("Registration required.");
+            regId = document.getElementById('regId').value;
+            if(!name || !regId) return alert("All fields are required.");
             render();
         }
 
         function render() {
-            let stage = exam[cur];
+            let stage = testBank[cur];
             document.getElementById('header').innerText = stage.title;
-            let inputField = stage.type === 'radio' 
+            let inputs = stage.type === 'radio' 
                 ? stage.options.map(o => `<div class="form-check"><input class="form-check-input" type="radio" name="opt" value="${o}"> ${o}</div>`).join('') 
-                : '<textarea id="ans" class="form-control mb-3" rows="4" placeholder="Draft clinical observation..."></textarea>';
-
+                : `<textarea id="ans" class="form-control mb-3" rows="4"></textarea>`;
+            
             document.getElementById('content').innerHTML = `
                 <p class="lead">${stage.prompt}</p>
-                ${inputField}
-                <button onclick="next()" class="btn btn-primary w-100">Submit Competency</button>
+                ${inputs}
+                <button onclick="next()" class="btn btn-primary w-100">Submit Response</button>
             `;
         }
 
         function next() {
-            let stage = exam[cur];
-            let score = 0;
+            let stage = testBank[cur];
             if(stage.type === 'radio') {
-                let selected = document.querySelector('input[name="opt"]:checked');
-                if(!selected) return alert("Selection required.");
-                score = (selected.value === stage.correct) ? 9 : 0;
+                let sel = document.querySelector('input[name="opt"]:checked');
+                if(!sel) return alert("Select an option.");
+                scores[stage.id] = (sel.value === stage.correct) ? 9.0 : 0.0;
             } else {
                 let input = document.getElementById('ans').value;
-                if(input.split(' ').length < stage.minWords) return alert("Response too brief (Professional reporting required).");
-                score = calculateAdvancedScore(input, stage);
+                if(input.split(' ').length < stage.minWords) return alert("Response too brief.");
+                scores[stage.id] = calculateAdvancedScore(input, stage);
             }
-            scores[stage.id] = score;
             cur++;
-            cur < exam.length ? render() : finish();
+            cur < testBank.length ? render() : finish();
         }
 
         function finish() {
-            let avg = (Object.values(scores).reduce((a,b)=>a+b,0)/exam.length).toFixed(1);
-            document.getElementById('header').innerText = "Assessment Finalized";
+            let avg = (Object.values(scores).reduce((a,b)=>a+b,0)/testBank.length).toFixed(1);
+            let mastery = avg >= 8.0 ? "Expert User (C2)" : avg >= 7.0 ? "Very Good User (C1)" : "Competent User (B2)";
+            
+            document.getElementById('header').innerText = "Official Assessment Report";
             document.getElementById('content').innerHTML = `
-                <div class="cert-box text-center">
-                    <h1>CERTIFICATE OF PROFICIENCY</h1>
-                    <p>Candidate: <strong>${name}</strong> (${regId})</p>
-                    <div class="score-display">${avg}</div>
+                <div class="cert-box">
+                    <h1 class="text-center">ENGLISH PROFICIENCY RECORD</h1>
+                    <div class="row mt-4">
+                        <div class="col-6"><p><strong>Candidate:</strong> ${name}</p><p><strong>ID:</strong> ${regId}</p></div>
+                        <div class="col-6 text-end"><p><strong>Overall Band:</strong> <span class="score-display">${avg}</span></p><p><strong>Level:</strong> ${mastery}</p></div>
+                    </div>
+                    <table class="table table-bordered mt-4">
+                        <thead><tr><th>Competency Domain</th><th>Band Score</th></tr></thead>
+                        <tbody>
+                            <tr><td>Writing (Clinical Reporting)</td><td>${scores.w1.toFixed(1)}</td></tr>
+                            <tr><td>Reading (Policy Compliance)</td><td>${scores.r1.toFixed(1)}</td></tr>
+                            <tr><td>Listening (Handover Analysis)</td><td>${scores.l1.toFixed(1)}</td></tr>
+                            <tr><td>Speaking (Professional Register)</td><td>${scores.s1.toFixed(1)}</td></tr>
+                        </tbody>
+                    </table>
                     <canvas id="chart" class="mt-4"></canvas>
-                    <button onclick="window.print()" class="btn btn-dark mt-4">Print Official Record</button>
+                    <button onclick="window.print()" class="btn btn-dark w-100 mt-4">Print Official Transcript</button>
                 </div>
             `;
-            new Chart(document.getElementById('chart'), { type: 'radar', data: { labels: Object.keys(scores), datasets: [{ data: Object.values(scores), label: 'Band Score' }] } });
+            new Chart(document.getElementById('chart'), { type: 'radar', data: { labels: ['Writing', 'Reading', 'Listening', 'Speaking'], datasets: [{ data: [scores.w1, scores.r1, scores.l1, scores.s1], label: 'Band Score' }] } });
         }
     </script>
 </body>
