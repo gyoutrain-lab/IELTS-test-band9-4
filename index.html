@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .cert-box { border: 12px double #000; padding: 50px; background: #fff; }
-        .score-display { font-size: 2.5rem; font-weight: bold; }
+        .score-display { font-size: 3rem; font-weight: bold; color: #0d6efd; }
     </style>
 </head>
 <body class="bg-light p-4">
@@ -22,22 +22,37 @@
     </div>
 
     <script>
-        // FIXED: Added "type" key to all modules
         const exam = [
-            { id: "writing", title: "Writing: Clinical Reporting", type: "text", prompt: "Baseline: 'The patient's BP is going up fast.'", target: ["escalation", "systolic", "pressure", "observation"], minWords: 10 },
-            { id: "reading", title: "Reading: NPSG Compliance", type: "radio", prompt: "Which is the primary goal of environmental hazard mitigation?", options: ["Cost reduction", "Adverse event prevention", "Staff convenience"], correct: "Adverse event prevention" }
+            { id: "writing", title: "Writing: Clinical Reporting", type: "text", 
+              prompt: "Baseline: 'The patient's BP is going up fast.'", 
+              target: ["escalation", "systolic", "pressure", "observation", "intervention"], minWords: 10 },
+            { id: "reading", title: "Reading: NPSG Compliance", type: "radio", 
+              prompt: "Which is the primary goal of environmental hazard mitigation?", 
+              options: ["Cost reduction", "Adverse event prevention", "Staff convenience"], correct: "Adverse event prevention" }
         ];
 
         let cur = 0, scores = {}, name = "", regId = "";
 
+        // PROFESSIONAL SCORING ENGINE
         function calculateAdvancedScore(input, stage) {
             let score = 0;
             const lowerInput = input.toLowerCase();
-            if (/tion|ment|ance|ence/i.test(lowerInput)) score += 4.0;
-            if (/^(clinical|regarding|subsequent|initial|immediate)/i.test(lowerInput)) score += 3.0;
+            const words = input.split(/\s+/).filter(w => w.length > 0);
+            
+            // 1. Vocabulary Density (Check for clinical target terms)
             const hits = stage.target.filter(w => lowerInput.includes(w)).length;
-            score += (hits / stage.target.length) * 2.0;
-            return Math.min(9.0, score);
+            score += (hits * 1.5); 
+
+            // 2. Nominalization (Band 9 marker: -tion, -ment, -ance, -ity)
+            if (/tion|ment|ance|ence|ity/i.test(lowerInput)) score += 2.5;
+
+            // 3. Syntactic Complexity (Complex phrasing)
+            if (lowerInput.includes("due to") || lowerInput.includes("resulting in") || lowerInput.includes("in order to")) score += 2.0;
+
+            // 4. Structure/Length (Professional standard)
+            if (words.length >= 10 && words.length <= 30) score += 2.0;
+
+            return Math.min(9.0, parseFloat(score.toFixed(1)));
         }
 
         function begin() {
@@ -50,10 +65,9 @@
         function render() {
             let stage = exam[cur];
             document.getElementById('header').innerText = stage.title;
-            // Logic to handle different types
             let inputField = stage.type === 'radio' 
                 ? stage.options.map(o => `<div class="form-check"><input class="form-check-input" type="radio" name="opt" value="${o}"> ${o}</div>`).join('') 
-                : '<textarea id="ans" class="form-control mb-3" rows="4"></textarea>';
+                : '<textarea id="ans" class="form-control mb-3" rows="4" placeholder="Draft clinical observation..."></textarea>';
 
             document.getElementById('content').innerHTML = `
                 <p class="lead">${stage.prompt}</p>
@@ -67,11 +81,11 @@
             let score = 0;
             if(stage.type === 'radio') {
                 let selected = document.querySelector('input[name="opt"]:checked');
-                if(!selected) return alert("Please select an option.");
+                if(!selected) return alert("Selection required.");
                 score = (selected.value === stage.correct) ? 9 : 0;
             } else {
                 let input = document.getElementById('ans').value;
-                if(input.split(' ').length < stage.minWords) return alert("Response too brief.");
+                if(input.split(' ').length < stage.minWords) return alert("Response too brief (Professional reporting required).");
                 score = calculateAdvancedScore(input, stage);
             }
             scores[stage.id] = score;
